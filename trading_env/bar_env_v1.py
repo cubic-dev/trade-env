@@ -18,7 +18,7 @@ class PositionStatus(object):
     NONE: int = 0
     OPEN: int = 1
     CLOSE: int = 2
-    CANCLE: int = 3
+    CANCEL: int = 3
 
 class Position(object):
     start_bar_idx: int = 0
@@ -166,6 +166,7 @@ class BarEnvV1(gym.Env):
 
     def _is_need_to_terminate(self, dt: datetime) -> bool:
         return (dt.hour == 7 and dt.minute == 55) or (dt.hour == 15 and dt.minute == 55) or (dt.hour == 23 and dt.minute == 55)
+    
     def step(self, action: dict) -> Tuple[Any, np.float64, bool, bool, dict]:
         if self._terminated:
             raise RuntimeError("Episode is terminated")
@@ -251,6 +252,10 @@ class BarEnvV1(gym.Env):
         else:
             reward += total_profit
 
+            if self._terminated:
+                if (self.value - self.initial_cash) / self.initial_cash < 0.05:
+                    reward -= 10
+
         return ob_prime, reward, self._terminated, self._truncated, self._get_trade_info()
     
     def reset(self, cash: np.float64 = 100, commission_rate: np.float64 = 5e-4, leverage: int = 20, deal_reward = 0.1) -> Any:
@@ -270,6 +275,9 @@ class BarEnvV1(gym.Env):
         self.deal_reward = deal_reward
         self.positions = []
         self.actions = []
+        self._terminated = False
+        self._truncated = False
+        
         if self.current_idx == 0:
             self.current_idx = self.window_size
         else:
